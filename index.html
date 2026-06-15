@@ -27,11 +27,13 @@
   .numrow input[type=number]{width:130px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:15px;font-weight:700;color:var(--ink)}
   .numrow span{font-size:13px;color:var(--grey)}
   .hero{background:var(--ink);color:#fff;border-radius:16px;padding:24px;text-align:center;margin-bottom:14px}
-  .hero .big{font-size:64px;font-weight:800;color:var(--yel);line-height:1}
+  .hero .big{font-size:56px;font-weight:800;color:var(--yel);line-height:1}
   .hero .cap{font-size:14px;color:#d8d8d2;margin-top:4px}
+  .hero .velo{font-size:15px;color:#d8d8d2;margin-top:10px;padding-top:10px;border-top:1px solid #333}
+  .hero .velo b{color:var(--yel);font-weight:800}
   .plan{background:var(--yel-soft);border:1px solid var(--yel);border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px}
   .plan b{font-size:15px}
-  .plan .price{font-size:20px;font-weight:800}
+  .plan .price{font-size:27px;font-weight:800}
   table{width:100%;border-collapse:collapse;font-size:14px}
   td{padding:9px 2px;border-bottom:1px solid var(--line)}
   td:last-child{text-align:right;font-weight:700}
@@ -60,10 +62,10 @@
     <div class="card">
       <h2>Sua meta</h2>
       <label>Hectares a assegurar <span class="val"><span id="haV">50.000</span> ha</span></label>
-      <input type="range" id="ha" min="1000" max="400000" step="500" value="50000">
+      <input type="range" id="ha" min="0" max="1000" step="1" value="653">
       <div class="numrow"><input type="number" id="haNum" value="50000" min="500" step="500"><span>ha (digite para precisão)</span></div>
 
-      <label>Prazo <span class="val"><span id="prazoV">12</span> meses</span></label>
+      <label>Prazo para assegurar <span class="val"><span id="prazoV">12</span> meses</span></label>
       <input type="range" id="prazo" min="6" max="36" value="12">
 
       <details>
@@ -81,17 +83,19 @@
     <div class="card">
       <h2>Dimensionamento recomendado</h2>
       <div class="hero">
-        <div class="big" id="muni">40</div>
-        <div class="cap">municípios recomendados em prospecção simultânea</div>
+        <div class="big" id="heroHa">50.000</div>
+        <div class="cap">hectares elegíveis a assegurar</div>
+        <div class="velo">em ~<span id="veloMeses">12</span> meses · <b id="veloRate">~4.200 ha/mês</b></div>
       </div>
       <div class="plan">
         <div><span class="pill">Plano sugerido</span><br><b id="planoNome">até 40 municípios</b></div>
         <div class="price" id="planoPreco">R$ 30.000/mês</div>
       </div>
       <table>
-        <tr><td>Encomendas / mês</td><td id="oEnc">160</td></tr>
-        <tr><td>Setup (Mapping Report, único)</td><td id="oSetup">R$ 200.000</td></tr>
-        <tr><td>Success fee <span style="color:#9a9a93;font-weight:400">· somente com contrato assinado e área assegurada</span></td><td id="oFee" style="color:#9a9a93;font-weight:500;font-size:13px">~ R$ 11.666.667</td></tr>
+        <tr><td>Nº de encomendas (proprietários) / mês</td><td id="oEnc">160</td></tr>
+        <tr><td>Nº de municípios-alvo <span style="color:#9a9a93;font-weight:400">· concomitantemente prospectados</span></td><td id="muni">40</td></tr>
+        <tr><td>Setup / Implantação <span style="color:#9a9a93;font-weight:400">· Mapping Report / aferição das áreas potenciais</span></td><td id="oSetup">R$ 200.000</td></tr>
+        <tr><td>Success fee estimado <span style="color:#9a9a93;font-weight:400">· somente com contrato assinado e área assegurada</span></td><td id="oFee" style="color:#9a9a93;font-weight:500;font-size:13px">~ R$ 11.666.667</td></tr>
       </table>
       <p class="note" id="noteDyn"></p>
     </div>
@@ -108,11 +112,14 @@
   var B=Math.log(M2/M1)/Math.log(A2/A1);
   var A=M1/Math.pow(A1,B);
   var $=function(id){return document.getElementById(id)};
+  var haMin=1000, haMax=400000, haRatio=Math.log(haMax/haMin);
+  function posToHa(p){ var ha=haMin*Math.pow(haMax/haMin, p/1000); var r=ha<10000?100:(ha<100000?500:1000); return Math.round(ha/r)*r; }
+  function haToPos(ha){ ha=Math.max(haMin,Math.min(haMax,ha)); return Math.round(1000*Math.log(ha/haMin)/haRatio); }
   function fmt(n){return n.toLocaleString("pt-BR")}
   function money(n){return "R$ "+Math.round(n).toLocaleString("pt-BR")}
 
   function calc(){
-    var ha=Math.max(500,+$("ha").value), prazo=+$("prazo").value, enc=+$("enc").value, inten=1;
+    var ha=posToHa(+$("ha").value), prazo=+$("prazo").value, enc=+$("enc").value, inten=1;
     var avg=Math.max(1,+$("avg").value);
     var feePerProp = Math.min(avg,1000)*300 + Math.max(0,Math.min(avg,5000)-1000)*200 + Math.max(0,avg-5000)*150;
     var effRate = feePerProp/avg;
@@ -125,6 +132,10 @@
     var muniShow=muni>100?100:muni;
 
     $("muni").textContent = muni>100 ? "100+" : muni;
+    $("heroHa").textContent = fmt(ha);
+    var rate=ha/prazo, rr=rate>=1000?Math.round(rate/100)*100:Math.round(rate/10)*10;
+    $("veloMeses").textContent = prazo;
+    $("veloRate").textContent = "~"+fmt(rr)+" ha/mês";
     $("oEnc").textContent = fmt(Math.round(muniShow*enc));
     $("oFee").textContent = "~ "+money(effRate*ha);
 
@@ -146,7 +157,7 @@
     $("noteDyn").textContent=n;
   }
   $("haNum").addEventListener("input",function(){
-    var v=+$("haNum").value||0; if(v>0){ $("ha").value=Math.min(400000,Math.max(1000,v)); } calc();
+    var v=+$("haNum").value||0; if(v>0){ $("ha").value=haToPos(v); } calc();
   });
   ["ha","prazo","enc","avg"].forEach(function(id){$(id).addEventListener("input",calc)});
   calc();
